@@ -264,8 +264,19 @@ def stop_pose_mode(reset_pose=True):
     armature = Common.get_armature()
     Common.set_active(armature)
 
+    # CATS plugin might be called in background mode
+    # without area nor region set.
+    # In that case it is not possible to call `bpy.ops.object.hide_view_clear`,
+    # as well as bpy.ops.wm.tool_set_by_id.
+    # Sadly `bpy.ops.wm.tool_set_by_id` does not implement `poll` method,
+    # this is why we use the result of `bpy.ops.object.hide_view_clear.poll`
+    # to decide it we can call both of them.
+
     # Make all objects visible
-    bpy.ops.object.hide_view_clear()
+    wm_available = bpy.ops.object.hide_view_clear.poll()
+
+    if bpy.ops.object.hide_view_clear.poll():
+        bpy.ops.object.hide_view_clear()
 
     for pb in armature.data.bones:
         pb.hide = False
@@ -289,7 +300,7 @@ def stop_pose_mode(reset_pose=True):
 
     if version_2_79_or_older():
         bpy.context.space_data.transform_manipulators = {'TRANSLATE'}
-    else:
+    elif wm_available:
         bpy.ops.wm.tool_set_by_id(name="builtin.select_box")
 
     Eyetracking.eye_left = None
